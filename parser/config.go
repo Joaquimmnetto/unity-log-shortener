@@ -1,4 +1,4 @@
-package v0
+package parser
 
 import (
 	"encoding/json"
@@ -111,7 +111,8 @@ func (t StartEndBlock) AsMatcher() *StartEndBlockMatcher {
 }
 
 type Summarizers struct {
-	EnableSceneSummarizer bool `json:"enableSceneSummarizer" yaml:"enableSceneSummarizer"`
+	EnableSceneSummarizer  bool `json:"enableSceneSummarizer" yaml:"enableSceneSummarizer"`
+	EnableAssetsSummarizer bool `json:"enableAssetsSummarizer" yaml:"enableAssetsSummarizer"`
 
 	summarizers []Summarizer
 }
@@ -121,6 +122,9 @@ func (s *Summarizers) AllSummarizers() []Summarizer {
 		s.summarizers = make([]Summarizer, 0, 1)
 		if s.EnableSceneSummarizer {
 			s.summarizers = append(s.summarizers, CreateSceneSummarizer())
+		}
+		if s.EnableAssetsSummarizer {
+			s.summarizers = append(s.summarizers, AssetCountSummarizer())
 		}
 	}
 	return s.summarizers

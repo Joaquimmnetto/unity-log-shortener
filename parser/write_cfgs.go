@@ -1,4 +1,4 @@
-package v0
+package parser
 
 func DefaultConfig() Config {
 	return Config{
@@ -12,15 +12,16 @@ func DefaultConfig() Config {
 			RemoveLine: []string{
 				`^\[Code Coverage\].*$`, // code_coverage_start
 				`^\[Performance\].*$`,   // peformance_start
-				//`^\s*\w.\w.*:.+\s*\(.+\)`,                                   //log_stacktrace_line
 				`^(?<namespace>[\w._\x60<>\/\s,]+):(?<method>[\w._\x60<>\/\s,]+) (?<params>\([\w._\x60<>\/\s,&\[\]]*\))\s?(?:\((?<line>at.*)\))?$`, //match stacktrace line. Jesus this one is terrifying.
-				`^\s*\(Filename:.*\)`,                                       //log_filename_line
-				`\s*Start importing.*`,                                      //asset_import_line
-				`\s*(\[Worker\s?\w+\]).+`,                                   //asset_worker_line
-				`^Artifact\(content hash=[^\s]+\) downloaded for.*`,         //artifact_download_line
-				`^ShaderCacheRemote downloaded [\d.]+ bytes for key '\w+'$`, //shader_cache_download_line
+				`^\s*\(Filename:.*\)`, //log_filename_line
+				//`\s*Start importing.*`,                                      //asset_import_line
+				//`\s*(\[Worker\s?\w+\]).+`,                                                                 //asset_worker_line
+				`^\s*(\[Worker\s?\w+\])  -> \(artifact id:.+`,                                             //asset_worker_import_finished_line
+				`^\s*Done ondemand importing asset:.+`,                                                    //asset_worker_import_finished_done_line
+				`^Artifact\(content hash=[^\s]+\) downloaded for.*`,                                       //artifact_download_line
+				`^ShaderCacheRemote downloaded [\d.]+ bytes for key '\w+'$`,                               //shader_cache_download_line
 				`^\s*-\s+Placed sprite\s+ [^\s]+ in page \(.+\) at \(.+\). Page is now \(.+\). \(.+\).*$`, //atlas_sprite_placement_line
-				`^Memory Statistics:$`, //memory stats [ALLOC_] are removed in tabulated blocks
+				`^Memory Statistics:$`,                                                                    //memory stats [ALLOC_] are removed in tabulated blocks
 
 			},
 			RemoveTabulatedBlocks: map[string]TabulatedBlock{
@@ -52,15 +53,8 @@ func DefaultConfig() Config {
 			},
 		},
 		Summarizers: Summarizers{
-			EnableSceneSummarizer: true,
+			EnableSceneSummarizer:  true,
+			EnableAssetsSummarizer: true,
 		},
-	}
-}
-
-func WriteDefaultConfig(filepath string) {
-	cfg := DefaultConfig()
-	err := cfg.ToYamlFile(filepath)
-	if err != nil {
-		panic(err)
 	}
 }

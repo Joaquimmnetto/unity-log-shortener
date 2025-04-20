@@ -2,63 +2,61 @@ package main
 
 import (
 	"bufio"
-	"fmt"
-	v0 "github.com/joaquimmnetto/unity-log-processor/v0"
+	"flag"
+	"github.com/joaquimmnetto/unity-log-processor/command"
+	"github.com/joaquimmnetto/unity-log-processor/parser"
 	"os"
-	"regexp"
-	"strings"
 )
 
 func main() {
+
+	var configFilePath string
+	flag.StringVar(&configFilePath, "parseConfig", "log_parser.yaml", "path to the yaml parsing configuration file. Defaults log_parser.yaml or internal configuration if no such file is present")
+	var secondaryLogFile string
+	flag.StringVar(&secondaryLogFile, "secondaryLogFile", "", "path to secondary log file. Secondary log file is the non-parsed input by default, or parsed input if -printUnparsed is set")
+	var printUnparsed bool
+	flag.BoolVar(&printUnparsed, "printUnparsed", false, "prints unparsed input to stdout. Parsed input will be sent to -secondaryLogFile, if present")
+	var printDefaultConfig bool
+	flag.BoolVar(&printDefaultConfig, "printDefaultConfig", false, "prints the default configuration as yaml to stdout and then finishes the application")
+	var help bool
+	flag.BoolVar(&help, "help", false, "show help message")
+
+	flag.Parse()
+
+	config := loadConfig(configFilePath)
 	scanner := bufio.NewScanner(os.Stdin)
-	config := v0.DefaultConfig()
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		for _, matcher := range config.Preprocessors.FirstMatchInlineRegexes() {
-			found := matcher.FindString(line)
-			if found != "" {
-				line = strings.Replace(line, found, "", 1)
-			}
+	if printDefaultConfig {
+		err := command.PrintConfig(parser.DefaultConfig(), os.Stdout)
+		if err != nil {
+			panic(err)
 		}
-
-		for _, matcher := range config.Preprocessors.AllMatchInLineRegexes() {
-			line = matcher.ReplaceAllString(line, "")
-		}
-
-		skipLine := false
-		skipLine = matchAnyRegex(line, config.Matchers.WholeLineRegexes())
-		if !skipLine {
-			skipLine = matchAnyMatcher(line, config.Matchers.AllMatchers())
-		}
-		if skipLine {
-			continue
-		}
-		for _, summarizer := range config.Summarizers.AllSummarizers() {
-			line = summarizer.Replace(line)
-		}
-		fmt.Println(line)
+		os.Exit(0)
 	}
 
-	if err := scanner.Err(); err != nil {
+	if help {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	parserWriter := command.NewParserWriter(printUnparsed)
+	if secondaryLogFile != "" {
+		parserWriter = command.ParserWriterWithSecondaryLogFile(secondaryLogFile, printUnparsed)
+	}
+	err := parserWriter.ParseWholeInput(scanner, &config)
+	if err = scanner.Err(); err != nil {
 		panic(err)
 	}
 }
 
-func matchAnyRegex(line string, matchers []*regexp.Regexp) bool {
-	for _, matcher := range matchers {
-		if matcher.MatchString(line) {
-			return true
+func loadConfig(configFilePath string) parser.Config {
+	if _, err := os.Stat(configFilePath); err == nil {
+		config, err := parser.LoadConfigFromYamlFile(configFilePath)
+		if err != nil {
+			panic(err)
 		}
+		return config
+	} else {
+		return parser.DefaultConfig()
 	}
-	return false
-}
-
-func matchAnyMatcher(line string, matchers []v0.Matcher) bool {
-	for _, matcher := range matchers {
-		if matcher.Match(line) {
-			return true
-		}
-	}
-	return false
 }
