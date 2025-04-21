@@ -82,9 +82,9 @@ func parseLine(config *parser.Config, line string) (string, bool) {
 	}
 	for _, summarizer := range config.Summarizers.AllSummarizers() {
 		line, skipLine = summarizer.Replace(line)
-	}
-	if skipLine {
-		return "", true
+		if skipLine {
+			return "", true
+		}
 	}
 	return line, false
 }

@@ -8,19 +8,6 @@ import (
 	"regexp"
 )
 
-func LoadConfigFromJsonFile(filepath string) (Config, error) {
-	var config Config
-	fileData, err := os.ReadFile(filepath)
-	if err != nil {
-		err = fmt.Errorf("error reading file %s: %w", filepath, err)
-	}
-	err = json.Unmarshal(fileData, &config)
-	if err != nil {
-		err = fmt.Errorf("error loading configuration from json file %s: %w", filepath, err)
-	}
-	return config, err
-}
-
 func LoadConfigFromYamlFile(filepath string) (Config, error) {
 	var config Config
 	fileData, err := os.ReadFile(filepath)
@@ -111,8 +98,9 @@ func (t StartEndBlock) AsMatcher() *StartEndBlockMatcher {
 }
 
 type Summarizers struct {
-	EnableSceneSummarizer  bool `json:"enableSceneSummarizer" yaml:"enableSceneSummarizer"`
-	EnableAssetsSummarizer bool `json:"enableAssetsSummarizer" yaml:"enableAssetsSummarizer"`
+	EnableSceneSummarizer      bool `json:"enableSceneSummarizer" yaml:"enableSceneSummarizer"`
+	EnableAssetsSummarizer     bool `json:"enableAssetsSummarizer" yaml:"enableAssetsSummarizer"`
+	EnableCscWarningsSumarizer bool `json:"enableCscWarningsSumarizer" yaml:"enableCscWarningsSumarizer"`
 
 	summarizers []Summarizer
 }
@@ -125,6 +113,9 @@ func (s *Summarizers) AllSummarizers() []Summarizer {
 		}
 		if s.EnableAssetsSummarizer {
 			s.summarizers = append(s.summarizers, AssetCountSummarizer())
+		}
+		if s.EnableCscWarningsSumarizer {
+			s.summarizers = append(s.summarizers, CscWarningsCountSummarizer())
 		}
 	}
 	return s.summarizers

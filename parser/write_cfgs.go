@@ -53,8 +53,9 @@ func DefaultConfig() Config {
 			},
 		},
 		Summarizers: Summarizers{
-			EnableSceneSummarizer:  true,
-			EnableAssetsSummarizer: true,
+			EnableSceneSummarizer:      true,
+			EnableAssetsSummarizer:     true,
+			EnableCscWarningsSumarizer: true,
 		},
 	}
 }

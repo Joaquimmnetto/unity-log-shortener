@@ -44,13 +44,28 @@ func (s *SceneSummarizer) Replace(line string) (string, bool) {
 	return line, false
 }
 
+func CscWarningsCountSummarizer() *CountSummarizer {
+	return &CountSummarizer{
+		countRegexes: []*regexp.Regexp{
+			regexp.MustCompile(`^([^/]+/)*[^/]+\(\d+,\d+\): warning.+$`),
+		},
+		finishRegex:         nil,
+		count:               0,
+		multiplicativePrint: true,
+		multiplicativeFrom:  0,
+		multiplicativeBase:  math.MaxInt64,
+		msgTemplate:         "CSC compilation shown %d warnings",
+	}
+}
+
 func AssetCountSummarizer() *CountSummarizer {
 	return &CountSummarizer{
 		countRegexes: []*regexp.Regexp{
 			regexp.MustCompile(`\s*Start importing.*`),
-			regexp.MustCompile(`\s*(\[Worker\s?\w+\])\s*Start importing.*`),
+			regexp.MustCompile(`\s*(\[Worker\s?\w+])\s*Start importing.*`),
 		},
-		finishRegex:         regexp.MustCompile(`^Asset Pipeline Refresh: Total: .+ seconds - Initiated by .+$`),
+		//finishRegex:         regexp.MustCompile(`^Asset Pipeline Refresh: Total: .+ seconds - Initiated by .+$`),
+		finishRegex:         nil,
 		count:               0,
 		multiplicativePrint: true,
 		multiplicativeFrom:  10,
@@ -60,6 +75,7 @@ func AssetCountSummarizer() *CountSummarizer {
 }
 
 type CountSummarizer struct {
+	active              bool
 	countRegexes        []*regexp.Regexp
 	finishRegex         *regexp.Regexp
 	count               int
@@ -75,28 +91,33 @@ func (c *CountSummarizer) Replace(line string) (string, bool) {
 		if r.MatchString(line) {
 			c.count = c.count + 1
 			match = true
+			c.active = true
 			break
 		}
 	}
-	if c.finishRegex.MatchString(line) {
-		finalCountMsg := c.message()
-		c.count = 0
-		return finalCountMsg + "\n" + line, false
-	}
 
-	if !match {
+	if !c.active && !match {
 		return line, false
 	}
-	if match && !c.multiplicativePrint {
+	if c.active && !match && (c.finishRegex == nil || c.finishRegex.MatchString(line)) {
+		finalCountMsg := c.message()
+		c.count = 0
+		c.active = false
+		return finalCountMsg + "\n" + line, false
+	}
+	if c.active && !match {
+		return "", true
+	}
+	if c.active && match && !c.multiplicativePrint {
 		return c.message(), false
 	}
-	if match && c.multiplicativePrint && c.count < c.multiplicativeFrom {
+	if c.active && match && c.multiplicativePrint && c.count < c.multiplicativeFrom {
 		return c.message(), false
 	}
-	if match && c.multiplicativePrint && c.count == c.multiplicativeFrom {
+	if c.active && match && c.multiplicativePrint && c.count == c.multiplicativeFrom {
 		return c.message(), false
 	}
-	if match && c.multiplicativePrint && math.Remainder(float64(c.count), float64(c.multiplicativeBase)) == 0 {
+	if c.active && match && c.multiplicativePrint && math.Remainder(float64(c.count), float64(c.multiplicativeBase)) == 0 {
 		return c.message(), false
 	}
 	//match == true here, skip this line
